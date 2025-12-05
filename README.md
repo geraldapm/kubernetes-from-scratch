@@ -97,8 +97,11 @@ done
 ```bash
 for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
   ssh root@${host} mkdir -p /etc/kubernetes/pki
+  #singleca# scp ca.crt root@${host}:/etc/kubernetes/pki/ca.crt
+  #singleca# scp ca.key root@${host}:/etc/kubernetes/pki/ca.key
+  scp kubernetes-ca-chain.crt root@${host}:/etc/kubernetes/pki/ca.crt
+  scp kubernetes-ca.key root@${host}:/etc/kubernetes/pki/ca.key
   scp \
-    ca.key ca.crt \
     kube-apiserver.key kube-apiserver.crt \
     kube-apiserver-kubelet-client.key kube-apiserver-kubelet-client.crt \
     kube-apiserver-etcd-client.key kube-apiserver-etcd-client.crt \
@@ -113,7 +116,7 @@ done
 Change "gpmrawk8s" with hostname prefix for easy identifying and have those lists stored on /etc/hosts.
 - Install kubectl on origin server
 ```bash
-export KUBERNETS_VERSION=1.32
+export KUBERNETES_VERSION=1.32
 sudo mkdir -p /etc/apt/trusted.gpg.d
 curl -fsSL https://pkgs.k8s.io/core:/stable:/v$KUBERNETES_VERSION/deb/Release.key | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg
 echo "deb [signed-by=/etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v$KUBERNETES_VERSION/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
@@ -124,9 +127,10 @@ sudo apt-get install -y kubectl
 - Generate kubelet kubeconfig. Change floating IP and Change "gpmrawk8s" with hostname prefix for easy identifying and have those lists stored on /etc/hosts.
 ```bash
 for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
+  KUBERNETES_CA=kubernetes-ca-chain.crt
   export FLOATING_IP=192.168.56.199
   kubectl config set-cluster gpmrawk8s \
-    --certificate-authority=ca.crt \
+    --certificate-authority=${KUBERNETES_CA} \
     --embed-certs=true \
     --server=https://${FLOATING_IP}:6443 \
     --kubeconfig=${host}.kubeconfig
@@ -151,8 +155,9 @@ done
 ```bash
 export FLOATING_IP=192.168.56.199
 {
+  KUBERNETES_CA=kubernetes-ca-chain.crt
   kubectl config set-cluster gpmrawk8s \
-    --certificate-authority=ca.crt \
+    --certificate-authority=${KUBERNETES_CA} \
     --embed-certs=true \
     --server=https://${FLOATING_IP}:6443 \
     --kubeconfig=kube-proxy.kubeconfig
@@ -177,8 +182,9 @@ unset FLOATING_IP
 ```bash
 export FLOATING_IP=192.168.56.199
 {
+  KUBERNETES_CA=kubernetes-ca-chain.crt
   kubectl config set-cluster gpmrawk8s \
-    --certificate-authority=ca.crt \
+    --certificate-authority=${KUBERNETES_CA} \
     --embed-certs=true \
     --server=https://${FLOATING_IP}:6443 \
     --kubeconfig=kube-controller-manager.kubeconfig
@@ -203,8 +209,9 @@ unset FLOATING_IP
 ```bash
 export FLOATING_IP=192.168.56.199
 {
+  KUBERNETES_CA=kubernetes-ca-chain.crt
   kubectl config set-cluster gpmrawk8s \
-    --certificate-authority=ca.crt \
+    --certificate-authority=${KUBERNETES_CA} \
     --embed-certs=true \
     --server=https://${FLOATING_IP}:6443 \
     --kubeconfig=kube-scheduler.kubeconfig
@@ -229,8 +236,9 @@ unset FLOATING_IP
 ```bash
 export FLOATING_IP=192.168.56.199
 {
+  KUBERNETES_CA=kubernetes-ca-chain.crt
   kubectl config set-cluster gpmrawk8s \
-    --certificate-authority=ca.crt \
+    --certificate-authority=${KUBERNETES_CA} \
     --embed-certs=true \
     --server=https://${FLOATING_IP}:6443 \
     --kubeconfig=admin.kubeconfig
@@ -331,7 +339,10 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
   ssh root@${host} mkdir -p /var/lib/etcd /etc/kubernetes/pki/etcd
   ssh root@${host} useradd -m -s /sbin/nologin -U etcd -u 427
   ssh root@${host} chown -R etcd:etcd /var/lib/etcd
-  scp {ca.crt,ca.key,kube-etcd.crt,kube-etcd.key} root@${host}:/etc/kubernetes/pki/etcd
+  #singleca# scp {ca.crt,ca.key,kube-etcd.crt,kube-etcd.key} root@${host}:/etc/kubernetes/pki/etcd
+  scp etcd-ca-chain.crt root@${host}:/etc/kubernetes/pki/etcd/ca.crt
+  scp etcd-ca.key root@${host}:/etc/kubernetes/pki/etcd/ca.key
+  scp {kube-etcd.crt,kube-etcd.key} root@${host}:/etc/kubernetes/pki/etcd
   ssh root@${host} chown -R etcd:etcd /etc/kubernetes/pki/etcd
 done
 ```
@@ -346,12 +357,12 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
   ssh root@${host} systemctl status etcd --no-pager
 done
 ```
-- Verify etcd member list. Change the TEST_IP env with one of control-plane IP
+- Verify etcd member list. Change the TEST_IP env with one of control-plane IP. Single CA use `--cacert=ca.crt`
 ```bash
 export TEST_IP=192.168.56.151
 sudo ETCDCTL_API=3 /tmp/etcd-download-test/etcdctl member list \
   --endpoints=https://${TEST_IP}:2379 \
-  --cacert=ca.crt \
+  --cacert=etcd-ca-chain.crt \
   --cert=kube-etcd.crt \
   --key=kube-etcd.key
 unset TEST_IP 
