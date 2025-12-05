@@ -19,8 +19,8 @@ if ! (ip addr | grep -q '$VIP_ADDRESS/'); then
   fi
 fi
 
-PORTS=$(netstat -nltp)
-echo $PORTS | grep -q $BIND_PORT
+PORTS=\$(ss -nltp)
+echo \$PORTS | grep -q \$BIND_PORT
 if [ $? -ne 0 ]; then
   echo $(date): keepalived failed to find kube-apiserver bound to port >> /etc/keepalived/log
   exit 1
@@ -29,7 +29,7 @@ EOF
 
 cat <<EOF | sudo tee /etc/keepalived/keepalived_state.sh
 #!/bin/bash
-echo $(date): keepalived state: "$@" >> /etc/keepalived/log
+echo \$(date): keepalived state: "\$@" >> /etc/keepalived/log
 EOF
 
 chmod 755 /etc/keepalived/check_apiserver.sh
