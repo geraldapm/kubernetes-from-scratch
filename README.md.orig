@@ -1,27 +1,45 @@
-# Kubernetes From Scratch - Provision Kubernetes Cluster from ground zero
+# Tutorial to provision k8s cluster from scratch using Vagrant.
 
 This repository contains a step-by-step tutorial to provision a Kubernetes cluster from scratch using Vagrant and VirtualBox. The tutorial is designed for educational purposes and aims to help users understand the inner workings of Kubernetes by building a cluster MANUALLY. 
-
-Current installed components:
-- Kubernetes 1.32.10
-- CNI Plugin
-- etcd
-- crictl
-- CRI-O
-- Calico CNI with Tigera Operator
 
 Reference: https://github.com/kelseyhightower/kubernetes-the-hard-way
 
 *NOTE: Requires linux system to follow this tutorial :)*
 
+## Provision VM using vagrant
+- Included scripts to initial provision VM and setup crio as CRI manually
+- Included scripts to install keepalived as floating IP to adapt multi-node control-plane nodes
+- It is recommended to use bastion host that has provisioned using vagrant. Run below command on the directory where Vagrantfile is located
+```
+vagrant up
+```
 
+## Define Control Plane and Worker Hostname & IPs
+- We are using below configurations with POD IP range 10.244.0.0/16 and Service IP range 10.96.0.0/12. Make sure that /etc/hosts on each node server is identical to ease the installation.
+- Make sure that each hostname resolution does not resolve to localhost! Check this problem https://github.com/kubernetes/kubernetes/issues/114073
+```
+# BAD
+127.0.1.1 gpmrawk8s-controlplane1 gpmrawk8s-controplane1.vagrant.gpm.my.id
+```
+```
+# Good
+127.0.1.1 localhost
+192.168.56.151 gpmrawk8s-controlplane1 gpmrawk8s-controlplane1.vagrant.gpm.my.id
+```
+
+```
+192.168.56.151 gpmrawk8s-controlplane1 gpmrawk8s-controlplane1.vagrant.gpm.my.id
+192.168.56.152 gpmrawk8s-controlplane2 gpmrawk8s-controlplane2.vagrant.gpm.my.id
+192.168.56.153 gpmrawk8s-controlplane3 gpmrawk8s-controlplane3.vagrant.gpm.my.id
+192.168.56.161 gpmrawk8s-worker1 gpmrawk8s-worker1.vagrant.gpm.my.id
+192.168.56.162 gpmrawk8s-worker2 gpmrawk8s-worker2.vagrant.gpm.my.id
+192.168.56.199 floating
+```
 
 ## Provision CA Cert and underlying certificates (Very Important)
 Initial CA configs are available on [../setup-configs/ca.conf](../setup-configs/ca.conf). Change the "10.96.0." depending on desired kubernetes service subnet range (defaults to 10.96.0.0/12).
 
 - Generate CA certificates, used for all kubernetes component and etcd CA cert
-
-When using only one single CA certificates pair:
 ```
 {
   openssl genrsa -out ca.key 4096
@@ -31,53 +49,11 @@ When using only one single CA certificates pair:
     -out ca.crt
 }
 ```
-Analyze CA cert
+- Analyze CA cert
 ```
 openssl x509 -noout -text -in ca.crt | grep -A4 -i issuer
 ```
-
-When using multiple intermediate certificates:
-```
-# Create necessary directory and seed file text
-mkdir -p certs rootca/crl newcerts
-
-# Root CA
-{
-  openssl genrsa -out rootca/ca.key 4096
-  chmod 400 rootca/ca.key
-  openssl req -x509 -new -sha512 -noenc \
-    -key rootca/ca.key -days 7300 -section rootca\
-    -config ca.conf \
-    -out rootca/ca.crt
-}
-
-# kubernetes, etcd, and front-proxy CA Generate
-kubeca=(
-  "kubernetes-ca"
-  "etcd-ca"
-  "front-proxy-ca"
-)
-
-for cert in ${kubeca[*]}; do
-  openssl genrsa -out $cert.key 4096
-  openssl req -new -key "$cert.key" -sha256 \
-      -config "ca.conf" -section $cert \
-      -out "$cert.csr"
-  openssl ca -days 3653 -batch -in "$cert.csr" \
-      -config "ca.conf" -out "$cert.crt"
-  openssl verify -CAfile rootca/ca.crt $cert.crt
-  cat $cert.crt \
-      rootca/ca.crt > $cert-chain.crt
-done
-
-```
-Analyze CA cert
-```
-openssl x509 -noout -text -in kubernetes-ca.crt | grep -A4 -i issuer
-openssl x509 -noout -text -in etcd-ca.crt | grep -A4 -i issuer
-openssl x509 -noout -text -in front-proxy-ca.crt | grep -A4 -i issuer
-```
-- Generate All Kubernetes & ETCD Certificate. For convenience, we are using scripts to expand the variables and generating those certs. Please Change the Hostname and IP inside the script. The scripts are in [../setup-scripts/gencert.sh](../setup-scripts/gencert.sh). Make sure to select when using multiple intermediate CAs or single CA
+- Generate All Kubernetes & ETCD Certificate. For convenience, we are using scripts to expand the variables and generating those certs. Please Change the Hostname and IP inside the script. The scripts are in [../setup-scripts/gencert.sh](../setup-scripts/gencert.sh).
 
 - Verify generated certificates
 ```

@@ -26,18 +26,6 @@ export IP_CP2=$IP_CP2
 export IP_CP3=$IP_CP3
 export FLOATINGIP=$FLOATINGIP
 
-# Change this values to ca.crt and ca.key if the certificates are signed only with one single CA
-KUBERNETES_CA_CERT=kubernetes-ca.crt
-KUBERNETES_CA_KEY=kubernetes-ca.key
-ETCD_CA_CERT=etcd-ca.crt
-ETCD_CA_KEY=etcd-ca.key
-FRONTPROXY_CA_CERT=front-proxy-ca.crt
-FRONTPROXY_CA_KEY=front-proxy-ca.key
-
-
-### Create necessary directory and seed file text
-mkdir -p certs rootca/crl newcerts
-
 ### Begin Generating all kubernetes node individual certs
 # controlplane1 
 export NODENAME=$HOSTNAME_CP1
@@ -48,8 +36,8 @@ openssl req -new -key "$NODENAME.key" -sha256 \
     -out "$NODENAME.csr"
 openssl x509 -req -days 3653 -in "$NODENAME.csr" \
     -copy_extensions copyall \
-    -sha256 -CA $KUBERNETES_CA_CERT \
-    -CAkey $KUBERNETES_CA_KEY \
+    -sha256 -CA "ca.crt" \
+    -CAkey "ca.key" \
     -CAcreateserial \
     -out "$NODENAME.crt"
 
@@ -62,8 +50,8 @@ openssl req -new -key "$NODENAME.key" -sha256 \
     -out "$NODENAME.csr"
 openssl x509 -req -days 3653 -in "$NODENAME.csr" \
     -copy_extensions copyall \
-    -sha256 -CA $KUBERNETES_CA_CERT \
-    -CAkey $KUBERNETES_CA_KEY \
+    -sha256 -CA "ca.crt" \
+    -CAkey "ca.key" \
     -CAcreateserial \
     -out "$NODENAME.crt"
 
@@ -76,8 +64,8 @@ openssl req -new -key "$NODENAME.key" -sha256 \
     -out "$NODENAME.csr"
 openssl x509 -req -days 3653 -in "$NODENAME.csr" \
     -copy_extensions copyall \
-    -sha256 -CA $KUBERNETES_CA_CERT \
-    -CAkey $KUBERNETES_CA_KEY \
+    -sha256 -CA "ca.crt" \
+    -CAkey "ca.key" \
     -CAcreateserial \
     -out "$NODENAME.crt"
 
@@ -90,8 +78,8 @@ openssl req -new -key "$NODENAME.key" -sha256 \
     -out "$NODENAME.csr"
 openssl x509 -req -days 3653 -in "$NODENAME.csr" \
     -copy_extensions copyall \
-    -sha256 -CA $KUBERNETES_CA_CERT \
-    -CAkey $KUBERNETES_CA_KEY \
+    -sha256 -CA "ca.crt" \
+    -CAkey "ca.key" \
     -CAcreateserial \
     -out "$NODENAME.crt"
 
@@ -104,8 +92,8 @@ openssl req -new -key "$NODENAME.key" -sha256 \
     -out "$NODENAME.csr"
 openssl x509 -req -days 3653 -in "$NODENAME.csr" \
     -copy_extensions copyall \
-    -sha256 -CA $KUBERNETES_CA_CERT \
-    -CAkey $KUBERNETES_CA_KEY \
+    -sha256 -CA "ca.crt" \
+    -CAkey "ca.key" \
     -CAcreateserial \
     -out "$NODENAME.crt"
 
@@ -121,7 +109,10 @@ kubecerts=(
   "kube-controller-manager"
   "kube-apiserver"
   "service-accounts"
+  "kube-etcd"
   "kube-apiserver-kubelet-client"
+  "kube-apiserver-etcd-client"
+  "front-proxy-client"
 )
 
 for i in ${kubecerts[*]}; do
@@ -133,53 +124,8 @@ for i in ${kubecerts[*]}; do
 
   openssl x509 -req -days 3653 -in "${i}.csr" \
     -copy_extensions copyall \
-    -sha256 -CA $KUBERNETES_CA_CERT \
-    -CAkey $KUBERNETES_CA_KEY \
-    -CAcreateserial \
-    -out "${i}.crt"
-  openssl x509 -noout -text -in "${i}.crt" | grep -A1 -iE "Subject:|Subject Alternative Name"
-done
-
-
-### Begin ETCD Components Cert Generation
-etcdcerts=(
-  "kube-etcd"
-  "kube-apiserver-etcd-client"
-)
-
-for i in ${etcdcerts[*]}; do
-  openssl genrsa -out "${i}.key" 4096
-
-  openssl req -new -key "${i}.key" -sha256 \
-    -config "ca.conf" -section ${i} \
-    -out "${i}.csr"
-
-  openssl x509 -req -days 3653 -in "${i}.csr" \
-    -copy_extensions copyall \
-    -sha256 -CA $ETCD_CA_CERT \
-    -CAkey $ETCD_CA_KEY \
-    -CAcreateserial \
-    -out "${i}.crt"
-  openssl x509 -noout -text -in "${i}.crt" | grep -A1 -iE "Subject:|Subject Alternative Name"
-done
-
-
-### Begin front-proxy Components Cert Generation
-frontproxycerts=(
-  "front-proxy-client"
-)
-
-for i in ${frontproxycerts[*]}; do
-  openssl genrsa -out "${i}.key" 4096
-
-  openssl req -new -key "${i}.key" -sha256 \
-    -config "ca.conf" -section ${i} \
-    -out "${i}.csr"
-
-  openssl x509 -req -days 3653 -in "${i}.csr" \
-    -copy_extensions copyall \
-    -sha256 -CA $FRONTPROXY_CA_CERT \
-    -CAkey $FRONTPROXY_CA_KEY \
+    -sha256 -CA "ca.crt" \
+    -CAkey "ca.key" \
     -CAcreateserial \
     -out "${i}.crt"
   openssl x509 -noout -text -in "${i}.crt" | grep -A1 -iE "Subject:|Subject Alternative Name"

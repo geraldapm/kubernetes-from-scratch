@@ -1,5 +1,5 @@
 .env.*
 *.log
 !e2e.log
-*/.vagrant
+.vagrant
 */configs/**
