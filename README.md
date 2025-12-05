@@ -22,7 +22,7 @@ Initial CA configs are available on [../setup-configs/ca.conf](../setup-configs/
 - Generate CA certificates, used for all kubernetes component and etcd CA cert
 
 When using only one single CA certificates pair:
-```
+```bash
 {
   openssl genrsa -out ca.key 4096
   openssl req -x509 -new -sha512 -noenc \
@@ -32,12 +32,12 @@ When using only one single CA certificates pair:
 }
 ```
 Analyze CA cert
-```
+```bash
 openssl x509 -noout -text -in ca.crt | grep -A4 -i issuer
 ```
 
 When using multiple intermediate certificates:
-```
+```bash
 # Create necessary directory and seed file text
 mkdir -p certs rootca/crl newcerts
 
@@ -72,7 +72,7 @@ done
 
 ```
 Analyze CA cert
-```
+```bash
 openssl x509 -noout -text -in kubernetes-ca.crt | grep -A4 -i issuer
 openssl x509 -noout -text -in etcd-ca.crt | grep -A4 -i issuer
 openssl x509 -noout -text -in front-proxy-ca.crt | grep -A4 -i issuer
@@ -80,20 +80,21 @@ openssl x509 -noout -text -in front-proxy-ca.crt | grep -A4 -i issuer
 - Generate All Kubernetes & ETCD Certificate. For convenience, we are using scripts to expand the variables and generating those certs. Please Change the Hostname and IP inside the script. The scripts are in [../setup-scripts/gencert.sh](../setup-scripts/gencert.sh). Make sure to select when using multiple intermediate CAs or single CA
 
 - Verify generated certificates
-```
+```bash
 for cert in $(ls *.crt); do openssl x509 -noout -text -in $cert | grep -A1 -iE "Subject:|Subject Alternative Name"; done
 ```
 - Setup Copy file to each kubernetes nodes (requires passwordless login on origin server). NOTE: Change "gpmrawk8s" with hostname prefix for easy identifying and have those lists stored on /etc/hosts.
-```
+```bash
 for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
   ssh root@${host} mkdir /var/lib/kubelet/
-  scp ca.crt root@${host}:/var/lib/kubelet/
+  scp kubernetes-ca-chain.crt root@${host}:/var/lib/kubelet/ca.crt
+  #singleca# scp ca.crt root@${host}:/var/lib/kubelet/
   scp ${host}.crt root@${host}:/var/lib/kubelet/kubelet.crt
   scp ${host}.key root@${host}:/var/lib/kubelet/kubelet.key
 done
 ```
 - Then copy kubernetes components certs into each of kubernetes control-planes
-```
+```bash
 for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
   ssh root@${host} mkdir -p /etc/kubernetes/pki
   scp \
@@ -111,7 +112,7 @@ done
 # Generate kubeconfig for kubernetes components
 Change "gpmrawk8s" with hostname prefix for easy identifying and have those lists stored on /etc/hosts.
 - Install kubectl on origin server
-```
+```bash
 export KUBERNETS_VERSION=1.32
 sudo mkdir -p /etc/apt/trusted.gpg.d
 curl -fsSL https://pkgs.k8s.io/core:/stable:/v$KUBERNETES_VERSION/deb/Release.key | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg
@@ -121,7 +122,7 @@ sudo apt-get update -y
 sudo apt-get install -y kubectl
 ```
 - Generate kubelet kubeconfig. Change floating IP and Change "gpmrawk8s" with hostname prefix for easy identifying and have those lists stored on /etc/hosts.
-```
+```bash
 for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
   export FLOATING_IP=192.168.56.199
   kubectl config set-cluster gpmrawk8s \
@@ -147,7 +148,7 @@ for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
 done
 ```
 - Generate kube-proxy kubeconfig
-```
+```bash
 export FLOATING_IP=192.168.56.199
 {
   kubectl config set-cluster gpmrawk8s \
@@ -173,7 +174,7 @@ export FLOATING_IP=192.168.56.199
 unset FLOATING_IP
 ```
 - Generate kube-controller-manager kubeconfig
-```
+```bash
 export FLOATING_IP=192.168.56.199
 {
   kubectl config set-cluster gpmrawk8s \
@@ -199,7 +200,7 @@ export FLOATING_IP=192.168.56.199
 unset FLOATING_IP
 ```
 - Generate kube-scheduler kubeconfig
-```
+```bash
 export FLOATING_IP=192.168.56.199
 {
   kubectl config set-cluster gpmrawk8s \
@@ -225,7 +226,7 @@ export FLOATING_IP=192.168.56.199
 unset FLOATING_IP
 ```
 - Generate kubernetes admin kubeconfig
-```
+```bash
 export FLOATING_IP=192.168.56.199
 {
   kubectl config set-cluster gpmrawk8s \
@@ -251,7 +252,7 @@ export FLOATING_IP=192.168.56.199
 unset FLOATING_IP
 ```
 - Copy the kubelet and kube-proxy kubeconfig files
-```
+```bash
 for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
   ssh root@${host} "mkdir -p /var/lib/{kube-proxy,kubelet}"
   scp kube-proxy.kubeconfig root@${host}:/var/lib/kube-proxy/kubeconfig
@@ -259,7 +260,7 @@ for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
 done
 ```
 - Finally copy the control-plane kubernetes components kubeconfig
-```
+```bash
 for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
   ssh root@${host} mkdir -p /etc/kubernetes
   scp admin.kubeconfig \
@@ -271,7 +272,7 @@ done
 
 ## Generate encryption-config
 - Generate encryption-config.yaml
-```
+```bash
 #!/bin/bash
 export ENCRYPTION_KEY=$(head -c 32 /dev/urandom | base64)
 
@@ -290,7 +291,7 @@ resources:
 EOF
 ```
 - Copy encryption-config.yaml to each controlplane nodes
-```
+```bash
 for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
   ssh root@${host} mkdir -p /etc/kubernetes
   scp encryption-config.yaml root@${host}:/etc/kubernetes
@@ -299,7 +300,7 @@ done
 
 ## Bootstrap ETCD Cluster on each controlplane nodes
 - Download & Extract etcd releases to /usr/local/bin
-```
+```bash
 ETCD_VER=v3.6.6
 
 # choose either URL
@@ -325,7 +326,7 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
 done
 ```
 - Create etcd dir and etcd pki certs dir
-```
+```bash
 for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
   ssh root@${host} mkdir -p /var/lib/etcd /etc/kubernetes/pki/etcd
   ssh root@${host} useradd -m -s /sbin/nologin -U etcd -u 427
@@ -336,7 +337,7 @@ done
 ```
 - Generate etcd-server systemd definition. Please Change the Hostname and IP inside the script. The scripts are in [../setup-scripts/etcd-systemd.sh](../setup-scripts/etcd-systemd.sh).
 - Copy each of etcd-server Script into each controlplane nodes and start them.
-```
+```bash
 for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
   scp etcd-${host}.service root@${host}:/etc/systemd/system/etcd.service
   ssh root@${host} systemctl daemon-reload
@@ -346,7 +347,7 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
 done
 ```
 - Verify etcd member list. Change the TEST_IP env with one of control-plane IP
-```
+```bash
 export TEST_IP=192.168.56.151
 sudo ETCDCTL_API=3 /tmp/etcd-download-test/etcdctl member list \
   --endpoints=https://${TEST_IP}:2379 \
@@ -359,7 +360,7 @@ unset TEST_IP
 ## Bootstrap kubernetes controlplane components on each controlplane nodes
 This time we only want to provision kubernetes controlplane components only. Later on we can provision those controlplane nodes as workload with worker nodes altogether.
 - Download Kubernetes Server binary. Adjust kubernetes versions as necessary
-```
+```bash
 export KUBERNETES_VERSION_MINOR=v1.32.10
 rm -f /tmp/kubernetes-server-linux-amd64.tar.gz
 rm -rf /tmp/kubernetes-server && mkdir -p /tmp/kubernetes-server
@@ -368,7 +369,7 @@ tar xzvf /tmp/kubernetes-server-linux-amd64.tar.gz -C /tmp/kubernetes-server --s
 rm -f /tmp/kubernetes-server-linux-amd64.tar.gz
 ```
 - Copy Kubernetes Server binary to each kubernetes controlplane nodes.
-```
+```bash
 for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
   scp /tmp/kubernetes-server/server/bin/{kube-apiserver,kube-scheduler,kube-controller-manager,kubelet,kube-proxy,kubectl} root@${host}:/usr/local/bin
   ssh root@${host} kube-apiserver --version
@@ -376,7 +377,7 @@ done
 ```
 - Generate kubernetes controlplane systemd definition for each controlplane nodes. Please Change the Hostname and IP inside the script. The scripts are in [../setup-scripts/controlplane-systemd.sh](../setup-scripts/controlplane-systemd.sh).
 - Copy kubernetes controlplane systemd definition and configs into each controlplane nodes and start the systemd services.
-```
+```bash
 for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
   scp kube-apiserver-${host}.service root@${host}:/etc/systemd/system/kube-apiserver.service
   scp kube-controller-manager-${host}.service root@${host}:/etc/systemd/system/kube-controller-manager.service
@@ -389,7 +390,7 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
 done
 ```
 - Apply kubelet-to-apiserver clusterrole for access authorization
-```
+```bash
 cat <<EOF | kubectl apply --kubeconfig admin.kubeconfig -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -427,7 +428,7 @@ subjects:
 EOF
 ```
 - Verify kubernetes controlplane components is running
-```
+```bash
 export FLOATING_IP=192.168.56.199
 kubectl cluster-info --kubeconfig admin.kubeconfig
 curl --cacert ca.crt https://${FLOATING_IP}:6443/version
@@ -437,7 +438,7 @@ unset FLOATING_IP=192.168.56.199
 ## Bootstrap kubernetes worker components on all nodes
 This section will initialize worker components on kubernetes including existng kubernetes controlplane nodes.
 - Install required packages for kubernetes port-forward while disabling swap
-```
+```bash
 for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
 sudo apt-get -y install socat conntrack ipset
 sudo swapon --show
@@ -445,7 +446,7 @@ sudo swapoff -a
 done
 ```
 - Download kubernetes worker components binary files
-```
+```bash
 # Downloading kubernetes binary files was skipped because it's already download while provisioning controlplane components
 export KUBERNETES_VERSION_MINOR=v1.32.10
 
@@ -462,7 +463,7 @@ tar xzvf /tmp/crictl-${CRICTL_VERSION}-linux-amd64.tar.gz -C /tmp/kubernetes-too
 rm -f /tmp/crictl-${CRICTL_VERSION}-linux-amd64.tar.gz
 ```
 - Install crictl, runc, and cni-plugins on all nodes
-```
+```bash
 for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
   scp /tmp/kubernetes-tools/{crictl,runc} root@${host}:/usr/local/bin
   scp /tmp/kubernetes-server/server/bin/{kubelet,kube-proxy} root@${host}:/usr/local/bin
@@ -473,7 +474,7 @@ for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
 done
 ```
 - Generate CNI default configs and copy to all nodes
-```
+```bash
 export POD_CIDR="10.244.0.0/16"
 export CNI_VERSION=1.0.0
 cat <<EOF | sudo tee 10-bridge.conf
@@ -509,7 +510,7 @@ unset POD_CIDR
 unset CNI_PLUGINS_VERSION
 ```
 - Setup crio configurations on all nodes
-```
+```bash
 cat <<EOF | tee 02-cgroup-manager.conf
 [crio.runtime]
 conmon_cgroup = "pod"
@@ -534,7 +535,7 @@ for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
 done
 ```
 - Generate kubelet config and kube-proxy config incluing its systemd definition
-```
+```bash
 export SERVICE_CIDR="10.96.0.0/12"
 export POD_CIDR="10.244.0.0/16"
 cat <<EOF | sudo tee kubelet-config.yaml
@@ -616,7 +617,7 @@ unset SERVICE_CIDR
 unset POD_CIDR
 ```
 - Copy those configurations and start kubelet and kube-proxy
-```
+```bash
 for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
   scp kubelet-config.yaml root@${host}:/var/lib/kubelet/kubelet-config.yaml
   scp kube-proxy-config.yaml root@${host}:/var/lib/kube-proxy/kube-proxy-config.yaml
@@ -628,7 +629,7 @@ for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
 done
 ```
 - Verify kubernetes nodes status
-```
+```bash
 kubectl get node  --kubeconfig admin.kubeconfig
 
 NAME                      STATUS   ROLES    AGE     VERSION
@@ -640,7 +641,7 @@ gpmrawk8s-worker2         Ready    <none>   10h   v1.32.10
 ```
 ## Enable admin remote access
 - Copy admin.kubeconfig to ~/.kube/config
-```
+```bash
 mkdir -p ~/.kube
 cp admin.kubeconfig ~/.kube/config
 chmod 600 ~/.kube/config
@@ -651,7 +652,7 @@ You can achieve this by installing Custom CNI or manually add pod routes based o
 
 In this tutorial we will use Cilium CNI to enable Pod Cluster Networking.
 - Install Cilium CNI
-```
+```bash
 ### Replace API_SERVER_IP with Floating IP
 API_SERVER_IP=192.168.56.199
 API_SERVER_PORT=6443
@@ -671,7 +672,7 @@ rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
     --set ipam.operator.clusterPoolIPv4PodCIDRList="10.244.0.0/16"
 ```
 - Verify Cilium CNI installation
-```
+```bash
 cilium status --wait
 # CTRL+C to abort
 cilium connectivity test
@@ -679,7 +680,7 @@ cilium connectivity test
 
 ## Enable local DNS resolution with coreDNS
 Apply following YAML with modified POD CIDR (important!)
-```
+```bash
 export SERVICE_CIDR=10.96.0.0/12
 cat <<EOF | tee coredns.yaml
 apiVersion: v1
@@ -882,7 +883,7 @@ EOF
 kubectl apply -f coredns.yaml
 ```
 - Verify DNS resolution
-```
+```bash
 kubectl run --rm -it --image=busybox -- nslookup kubernetes.default.svc.cluster.local
 ```
 
@@ -890,7 +891,7 @@ kubectl run --rm -it --image=busybox -- nslookup kubernetes.default.svc.cluster.
 This testing is intended to check if the newly-created kubernetes cluster from scratch is production-ready :D
 Refer to this link: https://blog.yangjerry.tw/k8s-conformance-sonobuoy-en/
 - Download sonobuoy and start the testing
-```
+```bash
 curl -sfL -O https://github.com/vmware-tanzu/sonobuoy/releases/download/v0.57.2/sonobuoy_0.57.2_linux_amd64.tar.gz
 tar -xzvf sonobuoy_0.57.2_linux_amd64.tar.gz
 ./sonobuoy run --mode=certified-conformance \
@@ -898,7 +899,7 @@ tar -xzvf sonobuoy_0.57.2_linux_amd64.tar.gz
     --systemd-logs-image=docker.io/sonobuoy/systemd-logs
 ```
 - Check for around 2 hours check periodically with this command:
-```
+```bash
 root@kube-1:~# ./sonobuoy status
          PLUGIN     STATUS   RESULT   COUNT                                PROGRESS
             e2e    running                1   Passed:  0, Failed:  0, Remaining:402
@@ -908,11 +909,11 @@ root@kube-1:~# ./sonobuoy status
 14:10:07 Sonobuoy has completed. Use `sonobuoy retrieve` to get results.
 ```
 - Get current sonobuoy test result
-```
+```bash
  ./sonobuoy retrieve
 ```
 - You can extract the file to get full logs and ensuring that the tests is succeeded. Now we have a production-ready kubernetes cluster :D
-```
+```bash
 rm -rf results
 mkdir results
 outfile=$(sonobuoy retrieve)
@@ -928,7 +929,7 @@ Ginkgo ran 1 suite in 2h53m49.05468171s
 Test Suite Passed
 ```
 - Cleanup sonobuoy tests
-```
+```bash
 ./sonobuoy delete
 ```
 
@@ -939,11 +940,11 @@ To add new worker nodes, just follow the same steps as in "Bootstrap kubernetes 
 ## Renew kubernetes certificates
 - Generate new certificates for all components. Please Change the Hostname and IP inside the script. The scripts are in [../setup-scripts/gencert.sh](../setup-scripts/gencert.sh).
 - Verify generated certificates
-```
+```bash
 for cert in $(ls *.crt); do openssl x509 -noout -text -in $cert | grep -A1 -iE "Subject:|Subject Alternative Name"; done
 ```
 - Setup Copy file to each kubernetes nodes (requires passwordless login on origin server). NOTE: Change "gpmrawk8s" with hostname prefix for easy identifying and have those lists stored on /etc/hosts.
-```
+```bash
 for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
   ssh root@${host} mkdir /var/lib/kubelet/
   scp ca.crt root@${host}:/var/lib/kubelet/
@@ -952,7 +953,7 @@ for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
 done
 ```
 - Then copy kubernetes components certs into each of kubernetes control-planes
-```
+```bash
 for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
   ssh root@${host} mkdir -p /etc/kubernetes/pki
   scp \
@@ -967,7 +968,7 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
 done
 ```
 - Generate kubelet kubeconfig. Change floating IP and Change "gpmrawk8s" with hostname prefix for easy identifying and have those lists stored on /etc/hosts.
-```
+```bash
 for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
   export FLOATING_IP=192.168.56.199
   kubectl config set-cluster gpmrawk8s \
@@ -993,7 +994,7 @@ for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
 done
 ```
 - Generate kube-proxy kubeconfig
-```
+```bash
 export FLOATING_IP=192.168.56.199
 {
   kubectl config set-cluster gpmrawk8s \
@@ -1019,7 +1020,7 @@ export FLOATING_IP=192.168.56.199
 unset FLOATING_IP
 ```
 - Generate kube-controller-manager kubeconfig
-```
+```bash
 export FLOATING_IP=192.168.56.199
 {
   kubectl config set-cluster gpmrawk8s \
@@ -1045,7 +1046,7 @@ export FLOATING_IP=192.168.56.199
 unset FLOATING_IP
 ```
 - Generate kube-scheduler kubeconfig
-```
+```bash
 export FLOATING_IP=192.168.56.199
 {
   kubectl config set-cluster gpmrawk8s \
@@ -1071,7 +1072,7 @@ export FLOATING_IP=192.168.56.199
 unset FLOATING_IP
 ```
 - Generate kubernetes admin kubeconfig
-```
+```bash
 export FLOATING_IP=192.168.56.199
 {
   kubectl config set-cluster gpmrawk8s \
@@ -1097,7 +1098,7 @@ export FLOATING_IP=192.168.56.199
 unset FLOATING_IP
 ```
 - Copy the kubelet and kube-proxy kubeconfig files
-```
+```bash
 for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
   ssh root@${host} "mkdir -p /var/lib/{kube-proxy,kubelet}"
   scp kube-proxy.kubeconfig root@${host}:/var/lib/kube-proxy/kubeconfig
@@ -1105,7 +1106,7 @@ for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
 done
 ```
 - Finally copy the control-plane kubernetes components kubeconfig
-```
+```bash
 for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
   ssh root@${host} mkdir -p /etc/kubernetes
   scp admin.kubeconfig \
@@ -1115,7 +1116,7 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
 done
 ```
 - Restart all controlplane components
-```
+```bash
 for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
   ssh root@${host} systemctl daemon-reload
   ssh root@${host} timeout 10s systemctl restart kube-apiserver kube-controller-manager kube-scheduler etcd
@@ -1125,7 +1126,7 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
 done
 ```
 - Restart all worker components
-```
+```bash
 for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
   ssh root@${host} systemctl daemon-reload
   ssh root@${host} timeout 10s systemctl restart kubelet kube-proxy
@@ -1134,12 +1135,12 @@ done
 
 ## Additional Notes:
 - You should restart Cilium Pods and Cilium Operator when restarting kube-apiserver for coordinated sync.
-```
+```bash
 kubectl rollout restart ds -n kube-system cilium
 kubectl rollout restart deploy -n kube-system cilium-operator
 ```
 - Currenty unfixed conformance tests error (FIXED with addition of front-proxy-client certs)
-```
+```bash
 # Reproduce Error:
 ./sonobuoy run --plugin=e2e --e2e-focus="Sample API Server using the current Aggregator"  --sonobuoy-image=docker.io/sonobuoy/sonobuoy --systemd-logs-image=docker.io/sonobuoy/systemd-logs
 
