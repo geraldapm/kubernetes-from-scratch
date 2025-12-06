@@ -70,8 +70,8 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --client-ca-file=/etc/kubernetes/pki/ca.crt \\
   --enable-admission-plugins=NamespaceLifecycle,NodeRestriction,LimitRanger,ServiceAccount,DefaultStorageClass,ResourceQuota \\
   --etcd-cafile=/etc/kubernetes/pki/etcd/ca.crt \\
-  --etcd-certfile=/etc/kubernetes/pki/etcd/kube-etcd.crt \\
-  --etcd-keyfile=/etc/kubernetes/pki/etcd/kube-etcd.key \\
+  --etcd-certfile=/etc/kubernetes/pki/kube-apiserver-etcd-client.crt \\
+  --etcd-keyfile=/etc/kubernetes/pki/kube-apiserver-etcd-client.key \\
   --etcd-servers=https://${IP_CP1}:2379,https://${IP_CP2}:2379,https://${IP_CP3}:2379 \\
   --event-ttl=1h \\
   --max-requests-inflight=1200 \\
@@ -80,7 +80,6 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --kubelet-certificate-authority=/etc/kubernetes/pki/ca.crt \\
   --kubelet-client-certificate=/etc/kubernetes/pki/kube-apiserver.crt \\
   --kubelet-client-key=/etc/kubernetes/pki/kube-apiserver.key \\
-  ### Enable intermediate CA cert bundle chain
   --runtime-config=api/all=true,certificates.k8s.io/v1beta1/clustertrustbundles=true \\
   --feature-gates=ClusterTrustBundle=true,ClusterTrustBundleProjection=true,APIServerIdentity=true,StorageVersionAPI=true,DynamicResourceAllocation=true,DRADeviceTaints=true,PodCertificateRequest=true \\
   --service-account-key-file=/etc/kubernetes/pki/service-accounts.crt \\
@@ -93,6 +92,7 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt \\
   --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key \\
   --requestheader-client-ca-file=/etc/kubernetes/pki/$FRONTPROXY_CA_CERT \\
+  --requestheader-allowed-names="" \\
   --v=2
 Restart=on-failure
 RestartSec=5
@@ -186,7 +186,6 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --kubelet-certificate-authority=/etc/kubernetes/pki/ca.crt \\
   --kubelet-client-certificate=/etc/kubernetes/pki/kube-apiserver-kubelet-client.crt \\
   --kubelet-client-key=/etc/kubernetes/pki/kube-apiserver-kubelet-client.key \\
-  ### Enable intermediate CA cert bundle chain
   --runtime-config=api/all=true,certificates.k8s.io/v1beta1/clustertrustbundles=true \\
   --feature-gates=ClusterTrustBundle=true,ClusterTrustBundleProjection=true,APIServerIdentity=true,StorageVersionAPI=true,DynamicResourceAllocation=true,DRADeviceTaints=true,PodCertificateRequest=true \\
   --service-account-key-file=/etc/kubernetes/pki/service-accounts.crt \\
@@ -199,6 +198,7 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt \\
   --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key \\
   --requestheader-client-ca-file=/etc/kubernetes/pki/$FRONTPROXY_CA_CERT \\
+  --requestheader-allowed-names="" \\
   --v=2
 Restart=on-failure
 RestartSec=5
@@ -282,8 +282,8 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --client-ca-file=/etc/kubernetes/pki/ca.crt \\
   --enable-admission-plugins=NamespaceLifecycle,NodeRestriction,LimitRanger,ServiceAccount,DefaultStorageClass,ResourceQuota \\
   --etcd-cafile=/etc/kubernetes/pki/etcd/ca.crt \\
-  --etcd-certfile=/etc/kubernetes/pki/etcd/kube-etcd.crt \\
-  --etcd-keyfile=/etc/kubernetes/pki/etcd/kube-etcd.key \\
+  --etcd-certfile=/etc/kubernetes/pki/kube-apiserver-etcd-client.crt \\
+  --etcd-keyfile=/etc/kubernetes/pki/kube-apiserver-etcd-client.key \\
   --etcd-servers=https://${IP_CP1}:2379,https://${IP_CP2}:2379,https://${IP_CP3}:2379 \\
   --event-ttl=1h \\
   --max-requests-inflight=1200 \\
@@ -292,7 +292,6 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --kubelet-certificate-authority=/etc/kubernetes/pki/ca.crt \\
   --kubelet-client-certificate=/etc/kubernetes/pki/kube-apiserver.crt \\
   --kubelet-client-key=/etc/kubernetes/pki/kube-apiserver.key \\
-  ### Enable intermediate CA cert bundle chain
   --runtime-config=api/all=true,certificates.k8s.io/v1beta1/clustertrustbundles=true \\
   --feature-gates=ClusterTrustBundle=true,ClusterTrustBundleProjection=true,APIServerIdentity=true,StorageVersionAPI=true,DynamicResourceAllocation=true,DRADeviceTaints=true,PodCertificateRequest=true \\
   --service-account-key-file=/etc/kubernetes/pki/service-accounts.crt \\
@@ -305,6 +304,7 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt \\
   --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key \\
   --requestheader-client-ca-file=/etc/kubernetes/pki/$FRONTPROXY_CA_CERT \\
+  --requestheader-allowed-names="" \\
   --v=2
 Restart=on-failure
 RestartSec=5
