@@ -985,7 +985,7 @@ kubectl apply -f coredns.yaml
 ```
 - Verify DNS resolution
 ```bash
-kubectl run --rm -it --image=docker.io/library/busybox:latest -- nslookup kubernetes.default.svc.cluster.local
+kubectl run dnslookup --rm -it --image=quay.io/prometheus/busybox:latest --  nslookup kubernetes.default.svc.cluster.local
 ```
 
 ## Final test: Sonobuoy conformance testing
