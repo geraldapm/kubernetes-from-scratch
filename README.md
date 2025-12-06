@@ -100,7 +100,10 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
   #singleca# scp ca.crt root@${host}:/etc/kubernetes/pki/ca.crt
   #singleca# scp ca.key root@${host}:/etc/kubernetes/pki/ca.key
   scp kubernetes-ca-chain.crt root@${host}:/etc/kubernetes/pki/ca.crt
+  scp kubernetes-ca.crt root@${host}:/etc/kubernetes/pki/kubernetes-ca.crt
   scp kubernetes-ca.key root@${host}:/etc/kubernetes/pki/ca.key
+  scp front-proxy-ca-chain.crt root@${host}:/etc/kubernetes/pki/front-proxy-ca.crt
+  scp front-proxy-ca.key root@${host}:/etc/kubernetes/pki/front-proxy-ca.key
   scp \
     kube-apiserver.key kube-apiserver.crt \
     kube-apiserver-kubelet-client.key kube-apiserver-kubelet-client.crt \
@@ -442,7 +445,7 @@ EOF
 ```bash
 export FLOATING_IP=192.168.56.199
 kubectl cluster-info --kubeconfig admin.kubeconfig
-curl --cacert ca.crt https://${FLOATING_IP}:6443/version
+curl --cacert kubernetes-ca-chain.crt https://${FLOATING_IP}:6443/version
 unset FLOATING_IP=192.168.56.199
 ```
 
@@ -687,6 +690,85 @@ rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
 cilium status --wait
 # CTRL+C to abort
 cilium connectivity test
+```
+
+If you want to use Calico CNI: Use below steps:
+- Install Calico CNI
+```bash
+CALICO_VERSION="v3.31.1"
+
+# Subnet of primary IP Address installed on node
+SUBNET=192.168.56.0/24
+
+# Pod CIDR range
+POD_CIDR=10.244.0.0/16
+
+# install Tigera Operator
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$CALICO_VERSION/manifests/operator-crds.yaml
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$CALICO_VERSION/manifests/tigera-operator.yaml
+
+# install Calico ebpf custom resources
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$CALICO_VERSION/manifests/custom-resources-bpf.yaml
+
+# Get current subnet interface
+local_interface=$(ip route | grep $SUBNET | awk '{print $3'} | head -n 1)
+
+cat <<EOF | kubectl apply -f -
+# This section includes base Calico installation configuration.
+# For more information, see: https://docs.tigera.io/calico/latest/reference/installation/api#operator.tigera.io/v1.Installation
+apiVersion: operator.tigera.io/v1
+kind: Installation
+metadata:
+  name: default
+spec:
+  # Configures Calico networking.
+  calicoNetwork:
+    # Uncomment to enable BPF Dataplane, Requires disabling kube-proxy
+    #linuxDataplane: BPF
+
+### Select the main subnet IP interface because vagrant has 2 distict network interfaces
+    nodeAddressAutodetectionV4:
+      interface: "${local_interface}"
+
+    bpfNetworkBootstrap: Enabled
+    kubeProxyManagement: Enabled
+    ipPools:
+      - name: default-ipv4-ippool
+        blockSize: 26
+        cidr: ${POD_CIDR}
+        encapsulation: VXLANCrossSubnet
+        natOutgoing: Enabled
+        nodeSelector: all()
+
+---
+# This section configures the Calico API server.
+# For more information, see: https://docs.tigera.io/calico/latest/reference/installation/api#operator.tigera.io/v1.APIServer
+apiVersion: operator.tigera.io/v1
+kind: APIServer
+metadata:
+  name: default
+spec: {}
+
+---
+# Configures the Calico Goldmane flow aggregator.
+apiVersion: operator.tigera.io/v1
+kind: Goldmane
+metadata:
+  name: default
+
+---
+# Configures the Calico Whisker observability UI.
+apiVersion: operator.tigera.io/v1
+kind: Whisker
+metadata:
+  name: default
+EOF
+
+# curl https://raw.githubusercontent.com/projectcalico/calico/v${CALICO_VERSION}/manifests/calico.yaml -O
+# kubectl apply -f calico.yaml
+
+# Install Metrics Server
+kubectl apply -f https://raw.githubusercontent.com/techiescamp/kubeadm-scripts/main/manifests/metrics-server.yaml
 ```
 
 ## Enable local DNS resolution with coreDNS

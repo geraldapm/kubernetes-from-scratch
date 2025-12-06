@@ -20,6 +20,10 @@ IP_WK2=192.168.56.162
 
 FLOATINGIP=192.168.56.199
 
+# Change this values to ca.crt and ca.key if the certificates are signed only with one single CA
+FRONTPROXY_CA_CERT=front-proxy-ca.crt
+FRONTPROXY_CA_KEY=front-proxy-ca.key
+
 export HOSTNAME_CP1=$HOSTNAME_CP1
 export HOSTNAME_CP2=$HOSTNAME_CP2
 export HOSTNAME_CP3=$HOSTNAME_CP3
@@ -44,6 +48,7 @@ clientConnection:
 leaderElection:
   leaderElect: true
 EOF
+
 
 # kube-apiserver
 cat <<EOF | sudo tee kube-apiserver-$NODENAME.service
@@ -75,7 +80,9 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --kubelet-certificate-authority=/etc/kubernetes/pki/etcd/ca.crt \\
   --kubelet-client-certificate=/etc/kubernetes/pki/kube-apiserver.crt \\
   --kubelet-client-key=/etc/kubernetes/pki/kube-apiserver.key \\
-  --runtime-config=api/all=true \\
+  ### Enable intermediate CA cert bundle chain
+  --runtime-config=api/all=true,certificates.k8s.io/v1beta1/clustertrustbundles=true \\
+  --feature-gates=ClusterTrustBundle=true,ClusterTrustBundleProjection=true,APIServerIdentity=true,StorageVersionAPI=true,DynamicResourceAllocation=true,DRADeviceTaints=true,PodCertificateRequest=true \\
   --service-account-key-file=/etc/kubernetes/pki/service-accounts.crt \\
   --service-account-signing-key-file=/etc/kubernetes/pki/service-accounts.key \\
   --service-account-issuer=https://${FLOATINGIP}:6443 \\
@@ -85,7 +92,7 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --tls-private-key-file=/etc/kubernetes/pki/kube-apiserver.key \\
   --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt \\
   --proxy-client-key-file /etc/kubernetes/pki/front-proxy-client.key \\
-  --requestheader-client-ca-file=/etc/kubernetes/pki/ca.crt \\
+  --requestheader-client-ca-file=/etc/kubernetes/pki/$FRONTPROXY_CA_CERT \\
   --v=2
 Restart=on-failure
 RestartSec=5
@@ -105,11 +112,14 @@ ExecStart=/usr/local/bin/kube-controller-manager \\
   --bind-address=0.0.0.0 \\
   --cluster-cidr=${POD_CIDR} \\
   --cluster-name=kubernetes \\
-  --cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt \\
+  --cluster-signing-cert-file=/etc/kubernetes/pki/kubernetes-ca.crt \\
   --cluster-signing-key-file=/etc/kubernetes/pki/ca.key \\
   --kubeconfig=/etc/kubernetes/kube-controller-manager.kubeconfig \\
+  --feature-gates=ClusterTrustBundle=true,ClusterTrustBundleProjection=true,APIServerIdentity=true,StorageVersionAPI=true,DynamicResourceAllocation=true,DRADeviceTaints=true,PodCertificateRequest=true \\
   --leader-elect=true \\
   --root-ca-file=/etc/kubernetes/pki/ca.crt \\
+  --client-ca-file=/etc/kubernetes/pki/ca.crt \\
+  --requestheader-client-ca-file=/etc/kubernetes/pki/$FRONTPROXY_CA_CERT \\
   --service-account-private-key-file=/etc/kubernetes/pki/service-accounts.key \\
   --service-cluster-ip-range=${SERVICE_CIDR} \\
   --use-service-account-credentials=true \\
@@ -130,6 +140,7 @@ Documentation=https://github.com/kubernetes/kubernetes
 [Service]
 ExecStart=/usr/local/bin/kube-scheduler \\
   --config=/etc/kubernetes/kube-scheduler.yaml \\
+  --client-ca-file=/etc/kubernetes/pki/ca.crt \\
   --v=2
 Restart=on-failure
 RestartSec=5
@@ -175,7 +186,9 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --kubelet-certificate-authority=/etc/kubernetes/pki/etcd/ca.crt \\
   --kubelet-client-certificate=/etc/kubernetes/pki/kube-apiserver-kubelet-client.crt \\
   --kubelet-client-key=/etc/kubernetes/pki/kube-apiserver-kubelet-client.key \\
-  --runtime-config=api/all=true \\
+  ### Enable intermediate CA cert bundle chain
+  --runtime-config=api/all=true,certificates.k8s.io/v1beta1/clustertrustbundles=true \\
+  --feature-gates=ClusterTrustBundle=true,ClusterTrustBundleProjection=true,APIServerIdentity=true,StorageVersionAPI=true,DynamicResourceAllocation=true,DRADeviceTaints=true,PodCertificateRequest=true \\
   --service-account-key-file=/etc/kubernetes/pki/service-accounts.crt \\
   --service-account-signing-key-file=/etc/kubernetes/pki/service-accounts.key \\
   --service-account-issuer=https://${FLOATINGIP}:6443 \\
@@ -185,7 +198,7 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --tls-private-key-file=/etc/kubernetes/pki/kube-apiserver.key \\
   --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt \\
   --proxy-client-key-file /etc/kubernetes/pki/front-proxy-client.key \\
-  --requestheader-client-ca-file=/etc/kubernetes/pki/ca.crt \\
+  --requestheader-client-ca-file=/etc/kubernetes/pki/$FRONTPROXY_CA_CERT \\
   --v=2
 Restart=on-failure
 RestartSec=5
@@ -205,11 +218,14 @@ ExecStart=/usr/local/bin/kube-controller-manager \\
   --bind-address=0.0.0.0 \\
   --cluster-cidr=${POD_CIDR} \\
   --cluster-name=kubernetes \\
-  --cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt \\
+  --cluster-signing-cert-file=/etc/kubernetes/pki/kubernetes-ca.crt \\
   --cluster-signing-key-file=/etc/kubernetes/pki/ca.key \\
   --kubeconfig=/etc/kubernetes/kube-controller-manager.kubeconfig \\
+  --feature-gates=ClusterTrustBundle=true,ClusterTrustBundleProjection=true,APIServerIdentity=true,StorageVersionAPI=true,DynamicResourceAllocation=true,DRADeviceTaints=true,PodCertificateRequest=true \\
   --leader-elect=true \\
   --root-ca-file=/etc/kubernetes/pki/ca.crt \\
+  --client-ca-file=/etc/kubernetes/pki/ca.crt \\
+  --requestheader-client-ca-file=/etc/kubernetes/pki/$FRONTPROXY_CA_CERT \\
   --service-account-private-key-file=/etc/kubernetes/pki/service-accounts.key \\
   --service-cluster-ip-range=${SERVICE_CIDR} \\
   --use-service-account-credentials=true \\
@@ -230,6 +246,7 @@ Documentation=https://github.com/kubernetes/kubernetes
 [Service]
 ExecStart=/usr/local/bin/kube-scheduler \\
   --config=/etc/kubernetes/kube-scheduler.yaml \\
+  --client-ca-file=/etc/kubernetes/pki/ca.crt \\
   --v=2
 Restart=on-failure
 RestartSec=5
@@ -275,7 +292,9 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --kubelet-certificate-authority=/etc/kubernetes/pki/etcd/ca.crt \\
   --kubelet-client-certificate=/etc/kubernetes/pki/kube-apiserver.crt \\
   --kubelet-client-key=/etc/kubernetes/pki/kube-apiserver.key \\
-  --runtime-config=api/all=true \\
+  ### Enable intermediate CA cert bundle chain
+  --runtime-config=api/all=true,certificates.k8s.io/v1beta1/clustertrustbundles=true \\
+  --feature-gates=ClusterTrustBundle=true,ClusterTrustBundleProjection=true,APIServerIdentity=true,StorageVersionAPI=true,DynamicResourceAllocation=true,DRADeviceTaints=true,PodCertificateRequest=true \\
   --service-account-key-file=/etc/kubernetes/pki/service-accounts.crt \\
   --service-account-signing-key-file=/etc/kubernetes/pki/service-accounts.key \\
   --service-account-issuer=https://${FLOATINGIP}:6443 \\
@@ -285,7 +304,7 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --tls-private-key-file=/etc/kubernetes/pki/kube-apiserver.key \\
   --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt \\
   --proxy-client-key-file /etc/kubernetes/pki/front-proxy-client.key \\
-  --requestheader-client-ca-file=/etc/kubernetes/pki/ca.crt \\
+  --requestheader-client-ca-file=/etc/kubernetes/pki/$FRONTPROXY_CA_CERT \\
   --v=2
 Restart=on-failure
 RestartSec=5
@@ -305,11 +324,14 @@ ExecStart=/usr/local/bin/kube-controller-manager \\
   --bind-address=0.0.0.0 \\
   --cluster-cidr=${POD_CIDR} \\
   --cluster-name=kubernetes \\
-  --cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt \\
+  --cluster-signing-cert-file=/etc/kubernetes/pki/kubernetes-ca.crt \\
   --cluster-signing-key-file=/etc/kubernetes/pki/ca.key \\
   --kubeconfig=/etc/kubernetes/kube-controller-manager.kubeconfig \\
+  --feature-gates=ClusterTrustBundle=true,ClusterTrustBundleProjection=true,APIServerIdentity=true,StorageVersionAPI=true,DynamicResourceAllocation=true,DRADeviceTaints=true,PodCertificateRequest=true \\
   --leader-elect=true \\
   --root-ca-file=/etc/kubernetes/pki/ca.crt \\
+  --client-ca-file=/etc/kubernetes/pki/ca.crt \\
+  --requestheader-client-ca-file=/etc/kubernetes/pki/$FRONTPROXY_CA_CERT \\
   --service-account-private-key-file=/etc/kubernetes/pki/service-accounts.key \\
   --service-cluster-ip-range=${SERVICE_CIDR} \\
   --use-service-account-credentials=true \\
@@ -330,6 +352,7 @@ Documentation=https://github.com/kubernetes/kubernetes
 [Service]
 ExecStart=/usr/local/bin/kube-scheduler \\
   --config=/etc/kubernetes/kube-scheduler.yaml \\
+  --client-ca-file=/etc/kubernetes/pki/ca.crt \\
   --v=2
 Restart=on-failure
 RestartSec=5
