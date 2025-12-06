@@ -91,7 +91,7 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --tls-cert-file=/etc/kubernetes/pki/kube-apiserver.crt \\
   --tls-private-key-file=/etc/kubernetes/pki/kube-apiserver.key \\
   --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt \\
-  --proxy-client-key-file /etc/kubernetes/pki/front-proxy-client.key \\
+  --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key \\
   --requestheader-client-ca-file=/etc/kubernetes/pki/$FRONTPROXY_CA_CERT \\
   --v=2
 Restart=on-failure
@@ -197,7 +197,7 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --tls-cert-file=/etc/kubernetes/pki/kube-apiserver.crt \\
   --tls-private-key-file=/etc/kubernetes/pki/kube-apiserver.key \\
   --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt \\
-  --proxy-client-key-file /etc/kubernetes/pki/front-proxy-client.key \\
+  --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key \\
   --requestheader-client-ca-file=/etc/kubernetes/pki/$FRONTPROXY_CA_CERT \\
   --v=2
 Restart=on-failure
@@ -303,7 +303,7 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --tls-cert-file=/etc/kubernetes/pki/kube-apiserver.crt \\
   --tls-private-key-file=/etc/kubernetes/pki/kube-apiserver.key \\
   --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt \\
-  --proxy-client-key-file /etc/kubernetes/pki/front-proxy-client.key \\
+  --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key \\
   --requestheader-client-ca-file=/etc/kubernetes/pki/$FRONTPROXY_CA_CERT \\
   --v=2
 Restart=on-failure
