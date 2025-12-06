@@ -12,7 +12,7 @@ BIND_PORT=6443
 if ! (ip addr | grep -q '$VIP_ADDRESS/'); then
   if grep -zo 'unicast_peer[[:space:]]*{[[:space:]]*}' /etc/keepalived/keepalived.conf; then
     if arping -f -I $(ip route get $VIP_ADDRESS | cut -d' ' -f3 | head -1) -c 3 $VIP_ADDRESS; then
-      if curl -k https://$VIP_ADDRESS:$BIND_PORT; then
+      if curl -k https://$VIP_ADDRESS:\$BIND_PORT; then
         exit 1
       fi
     fi

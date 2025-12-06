@@ -17,7 +17,7 @@ Reference: https://github.com/kelseyhightower/kubernetes-the-hard-way
 
 
 ## Provision CA Cert and underlying certificates (Very Important)
-Initial CA configs are available on [../setup-configs/ca.conf](../setup-configs/ca.conf). Change the "10.96.0." depending on desired kubernetes service subnet range (defaults to 10.96.0.0/12).
+Initial CA configs are available on [setup-configs/ca.conf](setup-configs/ca.conf). Change the "10.96.0." depending on desired kubernetes service subnet range (defaults to 10.96.0.0/12).
 
 - Generate CA certificates, used for all kubernetes component and etcd CA cert
 
@@ -77,7 +77,7 @@ openssl x509 -noout -text -in kubernetes-ca.crt | grep -A4 -i issuer
 openssl x509 -noout -text -in etcd-ca.crt | grep -A4 -i issuer
 openssl x509 -noout -text -in front-proxy-ca.crt | grep -A4 -i issuer
 ```
-- Generate All Kubernetes & ETCD Certificate. For convenience, we are using scripts to expand the variables and generating those certs. Please Change the Hostname and IP inside the script. The scripts are in [../setup-scripts/gencert.sh](../setup-scripts/gencert.sh). Make sure to select when using multiple intermediate CAs or single CA
+- Generate All Kubernetes & ETCD Certificate. For convenience, we are using scripts to expand the variables and generating those certs. Please Change the Hostname and IP inside the script. The scripts are in [setup-scripts/gencert.sh](setup-scripts/gencert.sh). Make sure to select when using multiple intermediate CAs or single CA
 
 - Verify generated certificates
 ```bash
@@ -349,7 +349,7 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
   ssh root@${host} chown -R etcd:etcd /etc/kubernetes/pki/etcd
 done
 ```
-- Generate etcd-server systemd definition. Please Change the Hostname and IP inside the script. The scripts are in [../setup-scripts/etcd-systemd.sh](../setup-scripts/etcd-systemd.sh).
+- Generate etcd-server systemd definition. Please Change the Hostname and IP inside the script. The scripts are in [setup-scripts/etcd-systemd.sh](setup-scripts/etcd-systemd.sh).
 - Copy each of etcd-server Script into each controlplane nodes and start them.
 ```bash
 for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
@@ -389,7 +389,7 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
   ssh root@${host} kube-apiserver --version
 done
 ```
-- Generate kubernetes controlplane systemd definition for each controlplane nodes. Please Change the Hostname and IP inside the script. The scripts are in [../setup-scripts/controlplane-systemd.sh](../setup-scripts/controlplane-systemd.sh).
+- Generate kubernetes controlplane systemd definition for each controlplane nodes. Please Change the Hostname and IP inside the script. The scripts are in [setup-scripts/controlplane-systemd.sh](setup-scripts/controlplane-systemd.sh).
 - Copy kubernetes controlplane systemd definition and configs into each controlplane nodes and start the systemd services.
 ```bash
 for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
@@ -441,6 +441,7 @@ subjects:
     name: kubernetes
 EOF
 ```
+
 - Verify kubernetes controlplane components is running
 ```bash
 export FLOATING_IP=192.168.56.199
@@ -713,6 +714,7 @@ kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$CALICO
 # Get current subnet interface
 local_interface=$(ip route | grep $SUBNET | awk '{print $3'} | head -n 1)
 
+# Use current kube-proxy aware dataplane
 cat <<EOF | kubectl apply -f -
 # This section includes base Calico installation configuration.
 # For more information, see: https://docs.tigera.io/calico/latest/reference/installation/api#operator.tigera.io/v1.Installation
@@ -766,11 +768,15 @@ metadata:
   name: default
 EOF
 
+### Manual install by yaml
 # curl https://raw.githubusercontent.com/projectcalico/calico/v${CALICO_VERSION}/manifests/calico.yaml -O
 # kubectl apply -f calico.yaml
+```
 
-# Install Metrics Server
-kubectl apply -f https://raw.githubusercontent.com/techiescamp/kubeadm-scripts/main/manifests/metrics-server.yaml
+## Enable metrics server
+- Apply the yaml provided in [setup-configs/metrics-server.yaml](setup-configs/metrics-server.yaml). Included requestheader-client-ca-file for extensions auth
+```bash
+kubectl apply -f setup-configs/metrics-server.yaml
 ```
 
 ## Enable local DNS resolution with coreDNS
@@ -1033,7 +1039,7 @@ Test Suite Passed
 To add new worker nodes, just follow the same steps as in "Bootstrap kubernetes worker components on all nodes" section.
 
 ## Renew kubernetes certificates
-- Generate new certificates for all components. Please Change the Hostname and IP inside the script. The scripts are in [../setup-scripts/gencert.sh](../setup-scripts/gencert.sh).
+- Generate new certificates for all components. Please Change the Hostname and IP inside the script. The scripts are in [setup-scripts/gencert.sh](setup-scripts/gencert.sh).
 - Verify generated certificates
 ```bash
 for cert in $(ls *.crt); do openssl x509 -noout -text -in $cert | grep -A1 -iE "Subject:|Subject Alternative Name"; done
