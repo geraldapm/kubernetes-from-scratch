@@ -77,7 +77,7 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --max-requests-inflight=1200 \\
   --max-mutating-requests-inflight=600 \\
   --encryption-provider-config=/etc/kubernetes/encryption-config.yaml \\
-  --kubelet-certificate-authority=/etc/kubernetes/pki/etcd/ca.crt \\
+  --kubelet-certificate-authority=/etc/kubernetes/pki/ca.crt \\
   --kubelet-client-certificate=/etc/kubernetes/pki/kube-apiserver.crt \\
   --kubelet-client-key=/etc/kubernetes/pki/kube-apiserver.key \\
   ### Enable intermediate CA cert bundle chain
@@ -183,7 +183,7 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --max-requests-inflight=1200 \\
   --max-mutating-requests-inflight=600 \\
   --encryption-provider-config=/etc/kubernetes/encryption-config.yaml \\
-  --kubelet-certificate-authority=/etc/kubernetes/pki/etcd/ca.crt \\
+  --kubelet-certificate-authority=/etc/kubernetes/pki/ca.crt \\
   --kubelet-client-certificate=/etc/kubernetes/pki/kube-apiserver-kubelet-client.crt \\
   --kubelet-client-key=/etc/kubernetes/pki/kube-apiserver-kubelet-client.key \\
   ### Enable intermediate CA cert bundle chain
@@ -289,7 +289,7 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --max-requests-inflight=1200 \\
   --max-mutating-requests-inflight=600 \\
   --encryption-provider-config=/etc/kubernetes/encryption-config.yaml \\
-  --kubelet-certificate-authority=/etc/kubernetes/pki/etcd/ca.crt \\
+  --kubelet-certificate-authority=/etc/kubernetes/pki/ca.crt \\
   --kubelet-client-certificate=/etc/kubernetes/pki/kube-apiserver.crt \\
   --kubelet-client-key=/etc/kubernetes/pki/kube-apiserver.key \\
   ### Enable intermediate CA cert bundle chain

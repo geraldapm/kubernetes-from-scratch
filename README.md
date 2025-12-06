@@ -399,7 +399,7 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
   scp kube-scheduler.yaml root@${host}:/etc/kubernetes/kube-scheduler.yaml
   ssh root@${host} systemctl daemon-reload
   ssh root@${host} systemctl enable kube-apiserver kube-controller-manager kube-scheduler
-  ssh root@${host} timeout 10s systemctl start kube-apiserver kube-controller-manager kube-scheduler
+  ssh root@${host} timeout 1m systemctl restart kube-apiserver kube-controller-manager kube-scheduler
   ssh root@${host} systemctl status kube-apiserver kube-controller-manager kube-scheduler --no-pager
 done
 ```
@@ -491,7 +491,7 @@ done
 ```bash
 export POD_CIDR="10.244.0.0/16"
 export CNI_VERSION=1.0.0
-cat <<EOF | sudo tee 10-bridge.conf
+cat <<EOF | sudo tee 00-bridge.conf
 {
     "cniVersion": "${CNI_VERSION}",
     "name": "bridge",
@@ -707,8 +707,8 @@ POD_CIDR=10.244.0.0/16
 kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$CALICO_VERSION/manifests/operator-crds.yaml
 kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$CALICO_VERSION/manifests/tigera-operator.yaml
 
-# install Calico ebpf custom resources
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$CALICO_VERSION/manifests/custom-resources-bpf.yaml
+# Enable ebpf resource
+# kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$CALICO_VERSION/manifests/custom-resources-bpf.yaml
 
 # Get current subnet interface
 local_interface=$(ip route | grep $SUBNET | awk '{print $3'} | head -n 1)
@@ -725,13 +725,15 @@ spec:
   calicoNetwork:
     # Uncomment to enable BPF Dataplane, Requires disabling kube-proxy
     #linuxDataplane: BPF
+    linuxDataplane: Iptables
+    bgp: Disabled
+    bpfNetworkBootstrap: Disabled
+    kubeProxyManagement: Disabled
 
 ### Select the main subnet IP interface because vagrant has 2 distict network interfaces
     nodeAddressAutodetectionV4:
       interface: "${local_interface}"
 
-    bpfNetworkBootstrap: Enabled
-    kubeProxyManagement: Enabled
     ipPools:
       - name: default-ipv4-ippool
         blockSize: 26
@@ -977,7 +979,7 @@ kubectl apply -f coredns.yaml
 ```
 - Verify DNS resolution
 ```bash
-kubectl run --rm -it --image=busybox -- nslookup kubernetes.default.svc.cluster.local
+kubectl run --rm -it --image=docker.io/library/busybox:latest -- nslookup kubernetes.default.svc.cluster.local
 ```
 
 ## Final test: Sonobuoy conformance testing
