@@ -78,8 +78,8 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --max-mutating-requests-inflight=600 \\
   --encryption-provider-config=/etc/kubernetes/encryption-config.yaml \\
   --kubelet-certificate-authority=/etc/kubernetes/pki/ca.crt \\
-  --kubelet-client-certificate=/etc/kubernetes/pki/kube-apiserver.crt \\
-  --kubelet-client-key=/etc/kubernetes/pki/kube-apiserver.key \\
+  --kubelet-client-certificate=/etc/kubernetes/pki/kube-apiserver-kubelet-client.crt \\
+  --kubelet-client-key=/etc/kubernetes/pki/kube-apiserver-kubelet-client.key \\
   --runtime-config=api/all=true,certificates.k8s.io/v1beta1/clustertrustbundles=true \\
   --feature-gates=ClusterTrustBundle=true,ClusterTrustBundleProjection=true,APIServerIdentity=true,StorageVersionAPI=true,DynamicResourceAllocation=true,DRADeviceTaints=true,PodCertificateRequest=true \\
   --service-account-key-file=/etc/kubernetes/pki/service-accounts.crt \\
@@ -290,8 +290,8 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --max-mutating-requests-inflight=600 \\
   --encryption-provider-config=/etc/kubernetes/encryption-config.yaml \\
   --kubelet-certificate-authority=/etc/kubernetes/pki/ca.crt \\
-  --kubelet-client-certificate=/etc/kubernetes/pki/kube-apiserver.crt \\
-  --kubelet-client-key=/etc/kubernetes/pki/kube-apiserver.key \\
+  --kubelet-client-certificate=/etc/kubernetes/pki/kube-apiserver-kubelet-client.crt \\
+  --kubelet-client-key=/etc/kubernetes/pki/kube-apiserver-kubelet-client.key \\
   --runtime-config=api/all=true,certificates.k8s.io/v1beta1/clustertrustbundles=true \\
   --feature-gates=ClusterTrustBundle=true,ClusterTrustBundleProjection=true,APIServerIdentity=true,StorageVersionAPI=true,DynamicResourceAllocation=true,DRADeviceTaints=true,PodCertificateRequest=true \\
   --service-account-key-file=/etc/kubernetes/pki/service-accounts.crt \\
