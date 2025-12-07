@@ -739,9 +739,9 @@ spec:
     # Uncomment to enable BPF Dataplane, Requires disabling kube-proxy
     #linuxDataplane: BPF
     linuxDataplane: Iptables
-    #bgp: Disabled
-    #bpfNetworkBootstrap: Disabled
-    #kubeProxyManagement: Disabled
+    bgp: Disabled
+    bpfNetworkBootstrap: Disabled
+    kubeProxyManagement: Disabled
 
 ### Select the main subnet IP interface because vagrant has 2 distict network interfaces
     nodeAddressAutodetectionV4:
