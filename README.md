@@ -16,7 +16,7 @@ Reference: https://github.com/kelseyhightower/kubernetes-the-hard-way
 
 
 
-## Provision CA Cert and underlying certificates (Very Important)
+## Provision CA Certs and its intermediate CA certs
 Initial CA configs are available on [setup-configs/ca.conf](setup-configs/ca.conf). Change the "10.96.0." depending on desired kubernetes service subnet range (defaults to 10.96.0.0/12).
 
 - Generate CA certificates, used for all kubernetes component and etcd CA cert
@@ -77,7 +77,13 @@ openssl x509 -noout -text -in kubernetes-ca.crt | grep -A4 -i issuer
 openssl x509 -noout -text -in etcd-ca.crt | grep -A4 -i issuer
 openssl x509 -noout -text -in front-proxy-ca.crt | grep -A4 -i issuer
 ```
-- Generate All Kubernetes & ETCD Certificate. For convenience, we are using scripts to expand the variables and generating those certs. Please Change the Hostname and IP inside the script. The scripts are in [setup-scripts/gencert.sh](setup-scripts/gencert.sh). Make sure to select when using multiple intermediate CAs or single CA
+## Generate kubernetes component underlying certificates
+Generate All Kubernetes & ETCD Certificate. For convenience, we are using scripts to expand the variables and generating those certs. Please Change the Hostname and IP inside the script. The scripts are in [setup-scripts/gencert.sh](setup-scripts/gencert.sh). Make sure to select when using multiple intermediate CAs or single CA
+
+- Generate kubernetes certs
+```bash
+bash setup-scripts/gencert.sh
+```
 
 - Verify generated certificates
 ```bash
@@ -115,7 +121,7 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
 done
 ```
 
-# Generate kubeconfig for kubernetes components
+## Generate kubeconfig for kubernetes components
 Change "gpmrawk8s" with hostname prefix for easy identifying and have those lists stored on /etc/hosts.
 - Install kubectl on origin server
 ```bash
@@ -1056,184 +1062,13 @@ Test Suite Passed
 To add new worker nodes, just follow the same steps as in "Bootstrap kubernetes worker components on all nodes" section.
 
 ## Renew kubernetes certificates
-- Generate new certificates for all components. Please Change the Hostname and IP inside the script. The scripts are in [setup-scripts/gencert.sh](setup-scripts/gencert.sh).
-- Verify generated certificates
-```bash
-for cert in $(ls *.crt); do openssl x509 -noout -text -in $cert | grep -A1 -iE "Subject:|Subject Alternative Name"; done
-```
-- Setup Copy file to each kubernetes nodes (requires passwordless login on origin server). NOTE: Change "gpmrawk8s" with hostname prefix for easy identifying and have those lists stored on /etc/hosts.
-```bash
-for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
-  ssh root@${host} mkdir /var/lib/kubelet/
-  scp ca.crt root@${host}:/var/lib/kubelet/
-  scp ${host}.crt root@${host}:/var/lib/kubelet/kubelet.crt
-  scp ${host}.key root@${host}:/var/lib/kubelet/kubelet.key
-done
-```
-- Then copy kubernetes components certs into each of kubernetes control-planes
-```bash
-for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
-  ssh root@${host} mkdir -p /etc/kubernetes/pki
-  scp \
-    ca.key ca.crt \
-    kube-apiserver.key kube-apiserver.crt \
-    kube-apiserver-kubelet-client.key kube-apiserver-kubelet-client.crt \
-    kube-apiserver-etcd-client.key kube-apiserver-etcd-client.crt \
-    front-proxy-client.key front-proxy-client.crt \
-    service-accounts.key service-accounts.crt \
-    kube-etcd.key kube-etcd.crt \
-    root@${host}:/etc/kubernetes/pki
-done
-```
-- Generate kubelet kubeconfig. Change floating IP and Change "gpmrawk8s" with hostname prefix for easy identifying and have those lists stored on /etc/hosts.
-```bash
-for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
-  export FLOATING_IP=192.168.56.199
-  kubectl config set-cluster gpmrawk8s \
-    --certificate-authority=ca.crt \
-    --embed-certs=true \
-    --server=https://${FLOATING_IP}:6443 \
-    --kubeconfig=${host}.kubeconfig
 
-  kubectl config set-credentials system:node:${host} \
-    --client-certificate=${host}.crt \
-    --client-key=${host}.key \
-    --embed-certs=true \
-    --kubeconfig=${host}.kubeconfig
+Restart all certs generation procedures from following sections:
+- [Generate kubernetes component underlying certificates](#generate-kubernetes-component-underlying-certificates)
+- [Generate kubernetes component underlying certificates](#generate-kubeconfig-for-kubernetes-components)
 
-  kubectl config set-context default \
-    --cluster=gpmrawk8s \
-    --user=system:node:${host} \
-    --kubeconfig=${host}.kubeconfig
 
-  kubectl config use-context default \
-    --kubeconfig=${host}.kubeconfig
-  unset FLOATING_IP
-done
-```
-- Generate kube-proxy kubeconfig
-```bash
-export FLOATING_IP=192.168.56.199
-{
-  kubectl config set-cluster gpmrawk8s \
-    --certificate-authority=ca.crt \
-    --embed-certs=true \
-    --server=https://${FLOATING_IP}:6443 \
-    --kubeconfig=kube-proxy.kubeconfig
-
-  kubectl config set-credentials system:kube-proxy \
-    --client-certificate=kube-proxy.crt \
-    --client-key=kube-proxy.key \
-    --embed-certs=true \
-    --kubeconfig=kube-proxy.kubeconfig
-
-  kubectl config set-context default \
-    --cluster=gpmrawk8s \
-    --user=system:kube-proxy \
-    --kubeconfig=kube-proxy.kubeconfig
-
-  kubectl config use-context default \
-    --kubeconfig=kube-proxy.kubeconfig
-}
-unset FLOATING_IP
-```
-- Generate kube-controller-manager kubeconfig
-```bash
-export FLOATING_IP=192.168.56.199
-{
-  kubectl config set-cluster gpmrawk8s \
-    --certificate-authority=ca.crt \
-    --embed-certs=true \
-    --server=https://${FLOATING_IP}:6443 \
-    --kubeconfig=kube-controller-manager.kubeconfig
-
-  kubectl config set-credentials system:kube-controller-manager \
-    --client-certificate=kube-controller-manager.crt \
-    --client-key=kube-controller-manager.key \
-    --embed-certs=true \
-    --kubeconfig=kube-controller-manager.kubeconfig
-
-  kubectl config set-context default \
-    --cluster=gpmrawk8s \
-    --user=system:kube-controller-manager \
-    --kubeconfig=kube-controller-manager.kubeconfig
-
-  kubectl config use-context default \
-    --kubeconfig=kube-controller-manager.kubeconfig
-}
-unset FLOATING_IP
-```
-- Generate kube-scheduler kubeconfig
-```bash
-export FLOATING_IP=192.168.56.199
-{
-  kubectl config set-cluster gpmrawk8s \
-    --certificate-authority=ca.crt \
-    --embed-certs=true \
-    --server=https://${FLOATING_IP}:6443 \
-    --kubeconfig=kube-scheduler.kubeconfig
-
-  kubectl config set-credentials system:kube-scheduler \
-    --client-certificate=kube-scheduler.crt \
-    --client-key=kube-scheduler.key \
-    --embed-certs=true \
-    --kubeconfig=kube-scheduler.kubeconfig
-
-  kubectl config set-context default \
-    --cluster=gpmrawk8s \
-    --user=system:kube-scheduler \
-    --kubeconfig=kube-scheduler.kubeconfig
-
-  kubectl config use-context default \
-    --kubeconfig=kube-scheduler.kubeconfig
-}
-unset FLOATING_IP
-```
-- Generate kubernetes admin kubeconfig
-```bash
-export FLOATING_IP=192.168.56.199
-{
-  kubectl config set-cluster gpmrawk8s \
-    --certificate-authority=ca.crt \
-    --embed-certs=true \
-    --server=https://${FLOATING_IP}:6443 \
-    --kubeconfig=admin.kubeconfig
-
-  kubectl config set-credentials admin \
-    --client-certificate=admin.crt \
-    --client-key=admin.key \
-    --embed-certs=true \
-    --kubeconfig=admin.kubeconfig
-
-  kubectl config set-context default \
-    --cluster=gpmrawk8s \
-    --user=admin \
-    --kubeconfig=admin.kubeconfig
-
-  kubectl config use-context default \
-    --kubeconfig=admin.kubeconfig
-}
-unset FLOATING_IP
-```
-- Copy the kubelet and kube-proxy kubeconfig files
-```bash
-for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
-  ssh root@${host} "mkdir -p /var/lib/{kube-proxy,kubelet}"
-  scp kube-proxy.kubeconfig root@${host}:/var/lib/kube-proxy/kubeconfig
-  scp ${host}.kubeconfig root@${host}:/var/lib/kubelet/kubeconfig
-done
-```
-- Finally copy the control-plane kubernetes components kubeconfig
-```bash
-for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
-  ssh root@${host} mkdir -p /etc/kubernetes
-  scp admin.kubeconfig \
-  kube-controller-manager.kubeconfig \
-  kube-scheduler.kubeconfig \
-    root@${host}:/etc/kubernetes
-done
-```
-- Restart all controlplane components
+Restart all controlplane components
 ```bash
 for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
   ssh root@${host} systemctl daemon-reload
@@ -1243,7 +1078,7 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
   ssh root@${host} systemctl status etcd --no-pager
 done
 ```
-- Restart all worker components
+Restart all worker components
 ```bash
 for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
   ssh root@${host} systemctl daemon-reload
