@@ -375,7 +375,7 @@ unset TEST_IP
 This time we only want to provision kubernetes controlplane components only. Later on we can provision those controlplane nodes as workload with worker nodes altogether.
 - Download Kubernetes Server binary. Adjust kubernetes versions as necessary
 ```bash
-export KUBERNETES_VERSION_MINOR=v1.32.10
+export KUBERNETES_VERSION_MINOR=v1.34.2
 rm -f /tmp/kubernetes-server-linux-amd64.tar.gz
 rm -rf /tmp/kubernetes-server && mkdir -p /tmp/kubernetes-server
 curl -L https://dl.k8s.io/${KUBERNETES_VERSION_MINOR}/kubernetes-server-linux-amd64.tar.gz -o /tmp/kubernetes-server-linux-amd64.tar.gz
@@ -463,7 +463,7 @@ done
 - Download kubernetes worker components binary files
 ```bash
 # Downloading kubernetes binary files was skipped because it's already download while provisioning controlplane components
-export KUBERNETES_VERSION_MINOR=v1.32.10
+export KUBERNETES_VERSION_MINOR=v1.34.2
 
 export CRICTL_VERSION=v1.32.0
 export RUNC_VERSION=v1.4.0
@@ -986,6 +986,23 @@ kubectl apply -f coredns.yaml
 - Verify DNS resolution
 ```bash
 kubectl run dnslookup --rm -it --image=quay.io/prometheus/busybox:latest --  nslookup kubernetes.default.svc.cluster.local
+```
+
+## Node labeling
+You want to give label to nicer look when doing `kubectl get nodes`. Here is the way:
+```bash
+# Label control-plane nodes
+kubectl label node $(cat /etc/hosts | grep "gpmrawk8s-controlplane" | awk '{print $2}' ) node-role.kubernetes.io/control-plane=
+kubectl label node $(cat /etc/hosts | grep "gpmrawk8s-worker" | awk '{print $2}' ) node-role.kubernetes.io/worker=
+
+# Results
+gerald@gpmbastionsys:~$ kubectl get node
+NAME                      STATUS   ROLES           AGE   VERSION
+gpmrawk8s-controlplane1   Ready    control-plane   32h   v1.34.2
+gpmrawk8s-controlplane2   Ready    control-plane   32h   v1.34.2
+gpmrawk8s-controlplane3   Ready    control-plane   32h   v1.34.2
+gpmrawk8s-worker1         Ready    worker          32h   v1.34.2
+gpmrawk8s-worker2         Ready    worker          32h   v1.34.2
 ```
 
 ## Final test: Sonobuoy conformance testing
