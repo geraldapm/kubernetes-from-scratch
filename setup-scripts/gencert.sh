@@ -145,6 +145,8 @@ done
 etcdcerts=(
   "kube-etcd"
   "kube-apiserver-etcd-client"
+  "kube-etcd-peer"
+  "kube-etcd-healtcheck-client"
 )
 
 for i in ${etcdcerts[*]}; do

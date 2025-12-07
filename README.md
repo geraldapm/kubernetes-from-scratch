@@ -351,7 +351,9 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
   #singleca# scp {ca.crt,ca.key,kube-etcd.crt,kube-etcd.key} root@${host}:/etc/kubernetes/pki/etcd
   scp etcd-ca-chain.crt root@${host}:/etc/kubernetes/pki/etcd/ca.crt
   scp etcd-ca.key root@${host}:/etc/kubernetes/pki/etcd/ca.key
-  scp {kube-etcd.crt,kube-etcd.key} root@${host}:/etc/kubernetes/pki/etcd
+  scp kube-etcd.crt kube-etcd.key \
+    kube-etcd-peer.crt kube-etcd-peer.key \
+    kube-etcd-healthcheck-client.crt kube-etcd-healthcheck-client.key root@${host}:/etc/kubernetes/pki/etcd
   ssh root@${host} chown -R etcd:etcd /etc/kubernetes/pki/etcd
 done
 ```
