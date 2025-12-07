@@ -739,9 +739,9 @@ spec:
     # Uncomment to enable BPF Dataplane, Requires disabling kube-proxy
     #linuxDataplane: BPF
     linuxDataplane: Iptables
-    bgp: Disabled
-    bpfNetworkBootstrap: Disabled
-    kubeProxyManagement: Disabled
+    #bgp: Disabled
+    #bpfNetworkBootstrap: Disabled
+    #kubeProxyManagement: Disabled
 
 ### Select the main subnet IP interface because vagrant has 2 distict network interfaces
     nodeAddressAutodetectionV4:
@@ -1105,4 +1105,34 @@ kubectl rollout restart deploy -n kube-system cilium-operator
 Summarizing 1 Failure:
   [FAIL] [sig-api-machinery] Aggregator [It] Should be able to support the 1.17 Sample API Server using the current Aggregator [Conformance] [sig-api-machinery, Conformance]
   k8s.io/kubernetes/test/e2e/apimachinery/aggregator.go:419
+```
+
+## Extra tools
+- Installing metallb
+```
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.15.3/config/manifests/metallb-native.yaml
+
+# Wait until all pods are running, then continue deploying ip-pools and L2 advertisement
+
+cat <<EOF | kubectl apply -f -
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: first-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 192.168.56.224/27
+EOF
+
+cat <<EOF | kubectl apply -f -
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: example
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - first-pool
+EOF
 ```
